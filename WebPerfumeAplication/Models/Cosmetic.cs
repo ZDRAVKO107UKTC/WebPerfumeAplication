@@ -1,29 +1,24 @@
 ﻿using System.ComponentModel.DataAnnotations;
-
-namespace WebCosmeticApp.Models
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.AspNetCore.Http;
+namespace WebCosmeticApp.Models;
+public class Cosmetic
 {
-    public class Cosmetic
-    {
-    
-        public int Id { get; set; }
+    private string name;
 
-        [Required]
-        public string Name { get; set; }
+    public int Id { get; set; }
 
-        public string Brand { get; set; }
+    [Required]
+    public string Name { get => name; set => name = value; }
+    public string Brand { get; set; }
+    public string Category { get; set; }
 
-        public string Category { get; set; }
+    public string Picture { get; set; }
 
-        [Display(Name = "Picture URL")]
-        public string Picture { get; set; }
+    public string Description { get; set; }
+    public decimal Price { get; set; }
+    public int Quantity { get; set; }
 
-        public string Description { get; set; }
-
-        [Range(0, 10000)]
-        public decimal Price { get; set; }
-
-        [Range(0, 100)]
-        public int Quantity { get; set; }
-        
-    }
+    [NotMapped]
+    public IFormFile ImageFile { get; set; }
 }

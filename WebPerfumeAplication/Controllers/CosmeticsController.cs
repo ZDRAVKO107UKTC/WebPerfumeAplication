@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebCosmeticApp.Data;
 using WebCosmeticApp.Models;
@@ -13,10 +8,12 @@ namespace WebCosmeticApp.Controllers
     public class CosmeticsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IWebHostEnvironment _hostEnvironment;
 
-        public CosmeticsController(ApplicationDbContext context)
+        public CosmeticsController(ApplicationDbContext context, IWebHostEnvironment hostEnvironment)
         {
             _context = context;
+            _hostEnvironment = hostEnvironment;
         }
 
         // GET: Cosmetics
@@ -29,16 +26,11 @@ namespace WebCosmeticApp.Controllers
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
-            var cosmetic = await _context.Cosmetics
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var cosmetic = await _context.Cosmetics.FirstOrDefaultAsync(m => m.Id == id);
             if (cosmetic == null)
-            {
                 return NotFound();
-            }
 
             return View(cosmetic);
         }
@@ -50,18 +42,35 @@ namespace WebCosmeticApp.Controllers
         }
 
         // POST: Cosmetics/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Name,Brand,Category,Picture,Description,Price,Quantity")] Cosmetic cosmetic)
+        public async Task<IActionResult> Create(Cosmetic cosmetic)
         {
             if (ModelState.IsValid)
             {
+                if (cosmetic.ImageFile != null)
+                {
+                    var wwwRootPath = _hostEnvironment.WebRootPath;
+                    string fileName = Path.GetFileNameWithoutExtension(cosmetic.ImageFile.FileName);
+                    string extension = Path.GetExtension(cosmetic.ImageFile.FileName);
+                    fileName = fileName + DateTime.Now.ToString("yyyyMMddHHmmssfff") + extension;
+                    string path = Path.Combine(wwwRootPath + "/uploads/", fileName);
+
+                    // Save file
+                    using (var fileStream = new FileStream(path, FileMode.Create))
+                    {
+                        await cosmetic.ImageFile.CopyToAsync(fileStream);
+                    }
+
+                    // Save file name in DB
+                    cosmetic.Picture = fileName;
+                }
+
                 _context.Add(cosmetic);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
             return View(cosmetic);
         }
 
@@ -69,29 +78,22 @@ namespace WebCosmeticApp.Controllers
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
             var cosmetic = await _context.Cosmetics.FindAsync(id);
             if (cosmetic == null)
-            {
                 return NotFound();
-            }
+
             return View(cosmetic);
         }
 
         // POST: Cosmetics/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Brand,Category,Picture,Description,Price,Quantity")] Cosmetic cosmetic)
+        public async Task<IActionResult> Edit(int id, Cosmetic cosmetic)
         {
             if (id != cosmetic.Id)
-            {
                 return NotFound();
-            }
 
             if (ModelState.IsValid)
             {
@@ -103,13 +105,9 @@ namespace WebCosmeticApp.Controllers
                 catch (DbUpdateConcurrencyException)
                 {
                     if (!CosmeticExists(cosmetic.Id))
-                    {
                         return NotFound();
-                    }
                     else
-                    {
                         throw;
-                    }
                 }
                 return RedirectToAction(nameof(Index));
             }
@@ -120,16 +118,11 @@ namespace WebCosmeticApp.Controllers
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
-            {
                 return NotFound();
-            }
 
-            var cosmetic = await _context.Cosmetics
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var cosmetic = await _context.Cosmetics.FirstOrDefaultAsync(m => m.Id == id);
             if (cosmetic == null)
-            {
                 return NotFound();
-            }
 
             return View(cosmetic);
         }
@@ -140,12 +133,23 @@ namespace WebCosmeticApp.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var cosmetic = await _context.Cosmetics.FindAsync(id);
+
             if (cosmetic != null)
             {
+                // Delete image from wwwroot/uploads
+                if (!string.IsNullOrEmpty(cosmetic.Picture))
+                {
+                    var imagePath = Path.Combine(_hostEnvironment.WebRootPath, "uploads", cosmetic.Picture);
+                    if (System.IO.File.Exists(imagePath))
+                    {
+                        System.IO.File.Delete(imagePath);
+                    }
+                }
+
                 _context.Cosmetics.Remove(cosmetic);
+                await _context.SaveChangesAsync();
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
