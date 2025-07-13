@@ -8,12 +8,10 @@ namespace WebCosmeticApp.Controllers
     public class CosmeticsController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly IWebHostEnvironment _hostEnvironment;
 
-        public CosmeticsController(ApplicationDbContext context, IWebHostEnvironment hostEnvironment)
+        public CosmeticsController(ApplicationDbContext context)
         {
             _context = context;
-            _hostEnvironment = hostEnvironment;
         }
 
         // GET: Cosmetics
@@ -25,12 +23,10 @@ namespace WebCosmeticApp.Controllers
         // GET: Cosmetics/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-                return NotFound();
+            if (id == null) return NotFound();
 
             var cosmetic = await _context.Cosmetics.FirstOrDefaultAsync(m => m.Id == id);
-            if (cosmetic == null)
-                return NotFound();
+            if (cosmetic == null) return NotFound();
 
             return View(cosmetic);
         }
@@ -48,24 +44,7 @@ namespace WebCosmeticApp.Controllers
         {
             if (ModelState.IsValid)
             {
-                if (cosmetic.ImageFile != null)
-                {
-                    var wwwRootPath = _hostEnvironment.WebRootPath;
-                    string fileName = Path.GetFileNameWithoutExtension(cosmetic.ImageFile.FileName);
-                    string extension = Path.GetExtension(cosmetic.ImageFile.FileName);
-                    fileName = fileName + DateTime.Now.ToString("yyyyMMddHHmmssfff") + extension;
-                    string path = Path.Combine(wwwRootPath + "/uploads/", fileName);
-
-                    // Save file
-                    using (var fileStream = new FileStream(path, FileMode.Create))
-                    {
-                        await cosmetic.ImageFile.CopyToAsync(fileStream);
-                    }
-
-                    // Save file name in DB
-                    cosmetic.Picture = fileName;
-                }
-
+                // Expecting cosmetic.Picture to contain a full image URL
                 _context.Add(cosmetic);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
@@ -77,12 +56,10 @@ namespace WebCosmeticApp.Controllers
         // GET: Cosmetics/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null)
-                return NotFound();
+            if (id == null) return NotFound();
 
             var cosmetic = await _context.Cosmetics.FindAsync(id);
-            if (cosmetic == null)
-                return NotFound();
+            if (cosmetic == null) return NotFound();
 
             return View(cosmetic);
         }
@@ -92,8 +69,7 @@ namespace WebCosmeticApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Cosmetic cosmetic)
         {
-            if (id != cosmetic.Id)
-                return NotFound();
+            if (id != cosmetic.Id) return NotFound();
 
             if (ModelState.IsValid)
             {
@@ -104,25 +80,23 @@ namespace WebCosmeticApp.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!CosmeticExists(cosmetic.Id))
-                        return NotFound();
-                    else
-                        throw;
+                    if (!CosmeticExists(cosmetic.Id)) return NotFound();
+                    else throw;
                 }
+
                 return RedirectToAction(nameof(Index));
             }
+
             return View(cosmetic);
         }
 
         // GET: Cosmetics/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-                return NotFound();
+            if (id == null) return NotFound();
 
             var cosmetic = await _context.Cosmetics.FirstOrDefaultAsync(m => m.Id == id);
-            if (cosmetic == null)
-                return NotFound();
+            if (cosmetic == null) return NotFound();
 
             return View(cosmetic);
         }
@@ -136,16 +110,6 @@ namespace WebCosmeticApp.Controllers
 
             if (cosmetic != null)
             {
-                // Delete image from wwwroot/uploads
-                if (!string.IsNullOrEmpty(cosmetic.Picture))
-                {
-                    var imagePath = Path.Combine(_hostEnvironment.WebRootPath, "uploads", cosmetic.Picture);
-                    if (System.IO.File.Exists(imagePath))
-                    {
-                        System.IO.File.Delete(imagePath);
-                    }
-                }
-
                 _context.Cosmetics.Remove(cosmetic);
                 await _context.SaveChangesAsync();
             }
